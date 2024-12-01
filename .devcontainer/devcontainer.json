@@ -1,0 +1,17 @@
+//Contenue à copier coller dans le fichier devcontainer.json 
+
+{
+	"name": "WS project",
+	"dockerComposeFile": "../docker-compose.yml",
+	// "initializeCommand": "echo 'fix WLS issue'",
+	"service": "server", // Le nom du service à utiliser dans le docker-compose.yml
+	"workspaceFolder": "/app",
+	"customizations": {
+	  "settings": {},
+	  "extensions": [],
+	"vscode": {
+		"extensions": []
+	}
+	},
+	"forwardPorts": [3001, 6379]
+  }

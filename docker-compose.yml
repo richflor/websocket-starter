@@ -1,0 +1,23 @@
+services:
+  server:
+    container_name: "server"
+    depends_on:
+      - redis
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: on-failure
+    ports:
+      - 3001:3001
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+  redis:
+    image: "redis:alpine"
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - ./redis/data:/data
