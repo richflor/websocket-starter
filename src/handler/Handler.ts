@@ -1,19 +1,24 @@
 import { WebSocket } from "ws";
 import { eventNames, WSMessage } from "../types/common";
 
-export abstract class Handler {
+// abstract class
+export class Handler {
     type?:eventNames
+    ws:WebSocket
+    constructor(ws:WebSocket) {
+        this.ws = ws;
+    }
 
-    handle(socket:WebSocket, message:WSMessage) {}
+    handle(message:WSMessage) {}
 
-    protected send(socket:WebSocket, id:string, payload:any) {
+    protected send(id:string, payload:any) {
         const type = this.type || "connect"
         const message:WSMessage = {
             type : type,
             id: id,
             payload:payload
         }
-        socket.send(JSON.stringify(message))
+        this.ws.send(JSON.stringify(message))
     }
 
 }

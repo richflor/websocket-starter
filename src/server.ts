@@ -8,7 +8,8 @@ import { Handlers } from './handler/Handlers';
 import { Connect } from './handler/Connect';
 
 const PORT = process.env.PORT || 3001
-const REDIS_PORT = process.env.PORT || 6379
+const REDIS_PORT = process.env.REDIS_PORT || 6379
+const WS_TIMEOUT = process.env.WS_TIMEOUT || 10*60*1000
 const app = express();
 
 //initialize a simple http server
@@ -20,7 +21,7 @@ const wss = new WebSocket.Server({ server });
 export const redisClient = createClient( {
     url: `redis://redis:${REDIS_PORT}`,
     socket :{
-        connectTimeout: 10*60*1000
+        connectTimeout: Number(WS_TIMEOUT)
     } 
 });
 
@@ -44,15 +45,31 @@ checkRedisHealth.then((conn) => {
 })
 
 const handlers = new Handlers({
-    [EVENTS.connect]: new Connect()
+    [EVENTS.connect]: Connect
 })
 
 const connections = new Map<string, WebSocket>();
 
-const rooms = []
+type ExtWebSocket = WebSocket & {
+    isAlive:boolean
+}
 
-wss.on('connection', async (ws: WebSocket) => {
+const rooms = []
+//to add
+//reconnection
+wss.on('connection', async (ws: ExtWebSocket) => {
     try {
+        ws.isAlive = true;
+
+        ws.on('error', (err) => {
+            throw err
+        });
+
+        ws.on('pong', () => {
+            console.log("pong");
+ 	        ws.isAlive = true;
+ 	    })
+
         ws.on('message', async (data: any) => {
             const message:WSMessage = JSON.parse(data);
             //log the received message and send it back to the client
@@ -65,9 +82,14 @@ wss.on('connection', async (ws: WebSocket) => {
             handlers.handle(ws, message);
         });
 
+        ws.on("close", (code) => {
+            console.log("Client disconnected : ", code)
+        })
+
         //send immediatly a feedback to the incoming connection    
-        ws.send('Hi there, I am a WebSocket server');        
+        ws.send('Hi there, I am a WebSocket server');
     } catch (error) {
+        console.log(error)
         ws.send("Error server");
     }
 
@@ -76,6 +98,20 @@ wss.on('connection', async (ws: WebSocket) => {
 wss.on("error", (err) => {
     console.log("Error server : ", err.message);
 })
+
+setInterval(() => {
+    wss.clients.forEach((ws) => {
+
+        const wso = ws as ExtWebSocket;
+    
+        // if pong was not answered we close the connection
+        if (!wso.isAlive) return wso.terminate();
+    
+        wso.isAlive = false;
+        // set isAlive to false and ping to have response
+        ws.ping(null, false);
+    });
+}, 20*1000);
 
 //start our server
 server.listen(PORT, () => {
