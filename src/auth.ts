@@ -3,7 +3,7 @@ import { redisClient } from "./server";
 import { EVENTS, WSMessage } from "./types/common";
 
 export const auth = async (message:WSMessage) => {
-    if (!message.id && message.type === EVENTS.connect) {
+    if (!message.id_user && message.type === EVENTS.connect) {
         const id = uuid();
         await redisClient.hSet(id, "name", message.payload.name || "name");
         // expire after one hour

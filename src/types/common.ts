@@ -6,6 +6,6 @@ export type eventNames = keyof typeof EVENTS
 
 export type WSMessage = {
     type:string,
-    id:string,
+    id_user:string,
     payload:any
 }

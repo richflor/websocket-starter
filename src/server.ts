@@ -66,7 +66,6 @@ wss.on('connection', async (ws: ExtWebSocket) => {
         });
 
         ws.on('pong', () => {
-            console.log("pong");
  	        ws.isAlive = true;
  	    })
 
@@ -77,7 +76,7 @@ wss.on('connection', async (ws: ExtWebSocket) => {
             const giveId = await auth(message);
             if (giveId) {
                 connections.set(giveId, ws);
-                message.id = giveId;
+                message.id_user = giveId;
             }
             handlers.handle(ws, message);
         });

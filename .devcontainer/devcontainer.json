@@ -4,7 +4,7 @@
 	"name": "WS project",
 	"dockerComposeFile": "../docker-compose.yml",
 	// "initializeCommand": "echo 'fix WLS issue'",
-	"service": "server", // Le nom du service à utiliser dans le docker-compose.yml
+	"service": "app", // Le nom du service à utiliser dans le docker-compose.yml
 	"workspaceFolder": "/app",
 	"customizations": {
 	  "settings": {},
@@ -13,5 +13,5 @@
 		"extensions": []
 	}
 	},
-	"forwardPorts": [3001, 6379]
+	"forwardPorts": [3000]
   }

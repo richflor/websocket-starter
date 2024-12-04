@@ -1,23 +1,50 @@
 services:
-  server:
-    container_name: "server"
+
+  nginx:
+    container_name: "nginx"
+    image: nginx:latest
+    depends_on:
+      - app
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile.nginx
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+    - loadbalancing
+
+  app:
+    # container_name: "app"
     depends_on:
       - redis
     build: 
       context: .
       dockerfile: docker/Dockerfile
     restart: on-failure
-    ports:
-      - 3001:3001
+    # ports:
+    #   - 3001:3001
     volumes:
       - ./:/app
       - /app/node_modules
     stdin_open: true
     tty: true
+    deploy:
+      replicas: 3
+    networks:
+      - loadbalancing
+
   redis:
+    container_name: "redis"
     image: "redis:alpine"
     restart: always
     ports:
       - '6379:6379'
     volumes:
       - ./redis/data:/data
+    networks:
+      - loadbalancing
+    
+networks:
+  loadbalancing:

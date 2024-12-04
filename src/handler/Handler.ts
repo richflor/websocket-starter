@@ -15,7 +15,7 @@ export class Handler {
         const type = this.type || "connect"
         const message:WSMessage = {
             type : type,
-            id: id,
+            id_user: id,
             payload:payload
         }
         this.ws.send(JSON.stringify(message))
