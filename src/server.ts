@@ -54,23 +54,40 @@ type ExtWebSocket = WebSocket & {
     isAlive:boolean
 }
 
+const parse = (data:any) => {
+    try {
+        console.log("parsing")
+        const message:WSMessage = JSON.parse(data);
+        return message;
+    } catch (error) {
+        console.log("parsing error handled")
+        return null
+    }
+}
+
 const rooms = []
 //to add
 //reconnection
 wss.on('connection', async (ws: ExtWebSocket) => {
-    try {
+    ws.isAlive = true;
+
+    ws.on('error', (err) => {
+        throw err
+    });
+
+    ws.on('pong', () => {
         ws.isAlive = true;
+    })
 
-        ws.on('error', (err) => {
-            throw err
-        });
-
-        ws.on('pong', () => {
- 	        ws.isAlive = true;
- 	    })
-
-        ws.on('message', async (data: any) => {
-            const message:WSMessage = JSON.parse(data);
+    ws.on('message', async (data: any) => {
+        const message:WSMessage | null = parse(data);
+        if(!message) {
+            ws.send(JSON.stringify({
+                message:"Invalid Json"
+            }))
+            return;
+        }
+        try {
             //log the received message and send it back to the client
             // give uuid if no uuid provided
             const giveId = await auth(message);
@@ -78,19 +95,21 @@ wss.on('connection', async (ws: ExtWebSocket) => {
                 connections.set(giveId, ws);
                 message.id_user = giveId;
             }
-            handlers.handle(ws, message);
-        });
+            handlers.handle(ws, message);                
+        } catch (error) {
+            console.log(error);
+            ws.send(JSON.stringify({
+                message:"Error Server"
+            }))
+        }
+    });
 
-        ws.on("close", (code) => {
-            console.log("Client disconnected : ", code)
-        })
+    ws.on("close", (code) => {
+        console.log("Client disconnected : ", code)
+    })
 
-        //send immediatly a feedback to the incoming connection    
-        ws.send('Hi there, I am a WebSocket server');
-    } catch (error) {
-        console.log(error)
-        ws.send("Error server");
-    }
+    //send immediatly a feedback to the incoming connection    
+    ws.send('Hi there, I am a WebSocket server');
 
 });
 
