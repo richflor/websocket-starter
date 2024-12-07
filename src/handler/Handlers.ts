@@ -12,10 +12,10 @@ export class Handlers {
     this.handlers = handlers
   }
 
-  handle(ws:WebSocket ,message:WSMessage) {
+  handle(ws:WebSocket ,message:WSMessage<any>) {
     if (!this.handlers[message.type]) {
-      // throw new Error('No handler for message')
-      console.log("no handler for message")
+      console.log("No handler for message")
+      return;
     }
 
     const handler = new this.handlers[message.type](ws);

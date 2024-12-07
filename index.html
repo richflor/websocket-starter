@@ -7,5 +7,25 @@
 </head>
 <body>
     <h1>Welcome to my Websocket Server !</h1>
+    <script>
+        const socket = new WebSocket("http://localhost:3000");
+
+        socket.addEventListener("error", (e) => {
+        console.log("Error", e)
+        });
+
+        socket.addEventListener("open", (event) => {
+        socket.send("hi");
+        });
+
+        socket.addEventListener("message", (event) => {
+        const data = JSON.parse(event.data)
+        console.log("Message from server ", data);
+        });
+
+        socket.addEventListener("close", (event) => {
+        console.log("The connection has been closed successfully.");
+        });
+    </script>
 </body>
 </html>

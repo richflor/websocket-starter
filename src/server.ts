@@ -2,10 +2,12 @@ import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
 import { createClient } from 'redis';
-import { auth } from './auth';
 import { EVENTS, WSMessage } from './types/common';
 import { Handlers } from './handler/Handlers';
 import { Connect } from './handler/Connect';
+import { Room } from './Room';
+import { CreateRoom } from './handler/CreateRoom';
+import { JoinRoom } from './handler/JoinRoom';
 
 const PORT = process.env.PORT || 3001
 const REDIS_PORT = process.env.REDIS_PORT || 6379
@@ -18,7 +20,15 @@ const server = http.createServer(app);
 //initialize the WebSocket server instance
 const wss = new WebSocket.Server({ server });
 
+// WHY DO THE CONNECTION TIMEOUT ? WHAT HAPPEN THEN ?
 export const redisClient = createClient( {
+    url: `redis://redis:${REDIS_PORT}`,
+    socket :{
+        connectTimeout: Number(WS_TIMEOUT)
+    } 
+});
+
+export const subscriber = createClient( {
     url: `redis://redis:${REDIS_PORT}`,
     socket :{
         connectTimeout: Number(WS_TIMEOUT)
@@ -28,6 +38,8 @@ export const redisClient = createClient( {
 redisClient
     .on('error', err => console.log('Redis Client Error', err))
     .connect();
+
+subscriber.connect();
 
 const checkRedisHealth:Promise<boolean> = new Promise( async (resolve, reject) => {
     try {
@@ -45,19 +57,21 @@ checkRedisHealth.then((conn) => {
 })
 
 const handlers = new Handlers({
-    [EVENTS.connect]: Connect
+    [EVENTS.connect]: Connect,
+    [EVENTS.createRoom]: CreateRoom,
+    [EVENTS.joinRoom]: JoinRoom
 })
 
-const connections = new Map<string, WebSocket>();
+export const connections = new Map<string, WebSocket>();
 
 type ExtWebSocket = WebSocket & {
-    isAlive:boolean
+    isAlive:boolean;
 }
 
 const parse = (data:any) => {
     try {
         console.log("parsing")
-        const message:WSMessage = JSON.parse(data);
+        const message:WSMessage<any> = JSON.parse(data);
         return message;
     } catch (error) {
         console.log("parsing error handled")
@@ -65,14 +79,22 @@ const parse = (data:any) => {
     }
 }
 
-const rooms = []
+export const rooms = new Map<string, Room>()
 //to add
-//reconnection
+//RECONNECTION
+//DATA VALIDATION
 wss.on('connection', async (ws: ExtWebSocket) => {
     ws.isAlive = true;
 
+    const errorHandler = (message:string) => {
+        ws.send(JSON.stringify({
+            error:message
+        }))
+    }    
+
     ws.on('error', (err) => {
-        throw err
+        console.log(err);
+        errorHandler("Error on WS protocol");
     });
 
     ws.on('pong', () => {
@@ -80,27 +102,19 @@ wss.on('connection', async (ws: ExtWebSocket) => {
     })
 
     ws.on('message', async (data: any) => {
-        const message:WSMessage | null = parse(data);
+        const message:WSMessage<any> | null = parse(data);
         if(!message) {
-            ws.send(JSON.stringify({
-                message:"Invalid Json"
-            }))
+            errorHandler("Invalid Json");
             return;
         }
+        if(!message.type) {
+            errorHandler("No event type specified");
+        }
         try {
-            //log the received message and send it back to the client
-            // give uuid if no uuid provided
-            const giveId = await auth(message);
-            if (giveId) {
-                connections.set(giveId, ws);
-                message.id_user = giveId;
-            }
-            handlers.handle(ws, message);                
+            handlers.handle(ws, message);          
         } catch (error) {
             console.log(error);
-            ws.send(JSON.stringify({
-                message:"Error Server"
-            }))
+            errorHandler("Error Server");
         }
     });
 
